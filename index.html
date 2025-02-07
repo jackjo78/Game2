@@ -20,6 +20,7 @@
 			$.ajax({
 				url: dir,
 				success: function(data){
+					alert(data);
 					$(data).find("a").each(function(){
 						var folderName = $(this).text();
 						if(unnecessaryFile.indexOf(folderName) == -1){
