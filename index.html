@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Title of the document</title>
+		<link href="css/Screen.css" rel="stylesheet" type="Text/css"></link>
+		<script src="js/jquery.js"></script>
+		<script src="js/jquery.cookie.js"></script>
+		<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	</head>
+	<script>
+		$(document).ready(function(){
+			//console.log('TEST');
+			
+			$('#btn_voice').on('click' , function(){
+				//var url = "https://translate.google.com/translate_tts?ie=UTF-8&q=Hello+World&tl=en";
+				//$('#audio1').attr('src',url).get(0).play();
+				Speeching($('#engName-label').val());
+			});
+			
+			$('#btn_back').on('click' , function(){
+				location.href = window.location.href.split('/index')[0];
+			});
+			
+			var InOrder = true;								
+			var folderName = $.cookie('folderName');
+			init(InOrder , folderName);
+			//inittest(true);
+			$('#img-div').on('click' , function(){			//點下圖片以後，換下一題
+				nextPage(InOrder);
+			});
+			
+			$('body').on('keypress' , function(){			
+				var x = event.keyCode;
+				
+				if(x == 13){
+					if($('#result-label').val() == 'Y'){	//如果答對了，按下 Enter，直接跳下一頁
+						nextPage(InOrder);
+					}
+				}
+			});
+
+			$('#b1').on('click' , function(){
+				$.getJSON('http://127.0.0.1:8000/test_2/14', function(data) {
+					alert(data.toString());  // 顯示整個 JSON 資料
+					alert(data.user_id);  // 取得 "user_id" 值
+				});
+			});
+		});
+		
+		function inittest(InOrder){
+			var dir = "Image";
+			$.ajax({
+				url: dir,
+				success: function(data){
+					var fileNameArray = [];
+					
+					$('#test_label').text(data);
+					
+					$(data).find("a:contains(.jpg)").each(function(){
+						var images = $(this).attr("href");
+					});
+
+				}
+			});
+		}
+		
+		function init(InOrder , folderName){
+			var dir = "Image/" + folderName;
+			$.ajax({
+				url: dir,
+				success: function(data){
+					var fileNameArray = [];
+					
+					$(data).find("a:contains(.jpg)").each(function(){
+						
+						var images = $(this).attr("href");
+		
+						var imgFileName = decodeURI(images.replace('/'+dir+'/','').replace('.jpg',''));
+	
+						fileNameArray.push({
+							imgPath : images,
+							imgFileName : imgFileName + '.jpg',
+							eName : imgFileName.split('_')[0],
+							cName : imgFileName.split('_')[1]
+						});
+						
+						
+						
+						var imgFileName = images.replace('/'+dir+'/','').replace('.jpg','');
+						eName = imgFileName.split('_')[0];
+						cName = decodeURI(imgFileName.split('_')[1]);
+						
+					
+					});
+
+					appendElement(fileNameArray , InOrder);
+					
+					$('#input_1').focus();
+					//是否一進畫面就要發出語音
+					
+					Speeching($('#engName-label').val());
+				}
+			});
+		}
+		
+		
+		function appendElement(obj , InOrder){
+			var _index = 0;
+				
+			if(InOrder){										//in order
+				if(location.search == ''){						//first time load
+					_index = 0;
+					$('#index-label').val('0');
+				}else{
+				//alert($('#index-label').val());
+					_index = location.search.split('=')[1];
+					if(_index == obj.length-1){
+						$('#index-label').val('0');
+					}else{
+						$('#index-label').val((Number(_index) + 1).toString());
+					}
+				}
+			}else{
+				_index = getRandomArbitrary(0,obj.length);		//random
+			}
+			//alert(_index);
+			$('#ch-div').append('<h1>' + obj[_index].cName + '</h1>');
+			$('#img-div').append('<img src="' + obj[_index].imgPath + '" style="border:2px solid; width:500px; height:450px;"></img>');
+			$('#engName-label').val(obj[_index].eName);
+			//alert(obj[_index].eName);
+			//alert(_index + ' = ' + obj[_index].eName);
+			appendEngInput(obj[_index].eName , InOrder);
+		}
+		
+		function appendEngInput(Eng , InOrder){
+			var _len = Eng.length;
+
+			for(var i=1; i<=_len; i++){
+
+				$('#eng-div').append('<input id="input_' + i + '" index="' + i + '" MaxLength="1" type="text" autocomplete="off" ></input>');
+				
+				//Event binding for each INPUT
+				$('#eng-div').on('keyup' , 'input#input_' + i , function(){
+					var x = event.keyCode;
+					//alert(x);
+					if((x >=65 && x <= 90) || x == 32){			//A ~ Z
+						$(this).next().focus().select();
+						
+						if(chkInputFull()){
+							chkAnswer(Eng);
+						}
+					}else if(x == 8){							//刪除鍵
+						/*
+						if($(this).val() == ''){
+							$('#input_' + (Number($(this).attr('index'))-1)).focus().select().css('color' , '#000000').val('');
+						}else{
+							$(this).val('').css('color' , '#000000');
+						}
+						*/
+						$(this).css('color' , '#000000');
+					}else if(x == 37) {							//左鍵
+						$('#input_' + (Number($(this).attr('index'))-1)).focus().select();
+					}else if(x == 39){							//右鍵
+						$('#input_' + (Number($(this).attr('index'))+1)).focus().select();
+					}else if(x == 13){							//Enter 鍵
+						if($('#result-label').val() == 'Y'){
+							nextPage(InOrder);
+						}
+					}else{
+						$(this).val('');
+					}
+				});
+				
+				/*
+				$('#eng-div').on('change' , 'input#input_' + i , function(){
+					$(this).css('color' , '#000000');
+					
+				});
+				*/
+			}
+		}
+		
+		function getRandomArbitrary(min, max) {
+			return Math.floor(Math.random()*max)+min;
+		}
+		
+		function moveTonext(ind){
+			$('#input_' + ind).focus();
+		}
+		
+		function chkInputFull(){
+			var bool = true;
+
+			$('input').each(function(i,o){
+				if($(o).val() != ''){
+					bool = true;
+					//continue;
+				}else{
+					bool = false;
+					return bool;;
+				}
+			});
+			
+			return bool;
+		}
+		
+		function chkAnswer(Eng){
+			var _len = Eng.length;
+			var bool = true;
+			
+			for(var i=1; i<=_len; i++){
+				//alert($('#input_' + i).val() + '=' + Eng.substr(i-1,1));
+				if($('#input_' + i).val() != Eng.substr(i-1,1)){
+					bool = false;
+					$('#input_' + i).css('color' , '#FF0000');
+				}else{
+					$('#input_' + i).css('color' , '#000000');
+				}
+			}
+			
+			if(bool){
+				$('#h2').text('答對了！').css('color' , '#009100');
+				$('#result-label').val('Y');
+					
+				var str = '';
+				$('input').each(function(i,o){
+					str = str + $(o).val();
+				});
+				Speeching(str);
+				
+			}else{
+				$('#h2').text('答錯了笨！').css('color' , '#FF0000');
+				$('#result-label').val('N');
+				
+				//Speeching2('笨');
+			}
+			//alert(Eng);
+		}
+		
+		function Speeching(str){
+			var msg = new SpeechSynthesisUtterance();
+			
+			//var voices = window.speechSynthesis.getVoices();
+			//msg.voice = voices[10]; 
+			//msg.volume = 1; // From 0 to 1
+			msg.rate = 0.8; // From 0.1 to 10
+			msg.pitch = 1.5; // From 0 to 2
+			//msg.text = "Como estas Joel";
+			msg.lang = 'en';
+
+			msg.text = str;
+			
+			window.speechSynthesis.speak(msg);
+		}
+		
+		function Speeching2(str){
+			var msg = new SpeechSynthesisUtterance();
+			
+			//var voices = window.speechSynthesis.getVoices();
+			//msg.voice = voices[10]; 
+			//msg.volume = 1; // From 0 to 1
+			msg.rate = 0.8; // From 0.1 to 10
+			msg.pitch = 1.5; // From 0 to 2
+			//msg.text = "Como estas Joel";
+			msg.lang = 'cn';
+
+			msg.text = str;
+			window.speechSynthesis.speak(msg);
+		}
+		
+		function nextPage(InOrder){
+			if(InOrder){
+				var _ind = 0;
+				//alert(location.search );
+				if(location.search == ''){				//first time load page
+					_ind = 1;
+				}else{
+					_ind = $('#index-label').val();
+				}
+
+				//location.href = 'http://localhost:8787?ind=' + _ind.toString();
+				location.href = window.location.href.split('?')[0] + '?ind=' + _ind.toString();
+			}else{
+				location.reload();
+			}
+		}
+	</script>
+	<body>
+		<form>
+			<button id="btn_back" class="button_back" type="button">回首頁<img id="img_back" class="img_back" src="Image/Others/back_1.png"></img></button>
+			<div id="ch-div" class="ch-div"></div>
+			<div id="img-div" class="img-div">
+				<!--
+				<img src="Image/zebra_斑馬.jpg"></img>
+				-->
+			</div>
+			<div id="eng-div" class="eng-div">
+				<!--
+				<input class="" MaxLength="1" type="text">
+				-->
+			</div>
+			<div id="result-div" class="result-div">
+				<label id="test_label"></label>
+				<h2 id="h2"></h2>
+				
+				<label id="result-label"></label>
+				<label id="index-label"></label>
+				<label id="engName-label" style="display: none;"></label>
+				
+				<button id="btn_voice" class="button_voice" type="button">聽聽看哦<img id="img_voice" src="Image/Others/voice.jpg" class="voice"></img></button>
+				
+				
+			</div>
+			<button id="b1">按按看阿你</button>
+		</form>
+	</body>
+</html>
